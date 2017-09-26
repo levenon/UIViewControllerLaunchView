@@ -14,21 +14,9 @@
 		08E015691E5306DE004DF28B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08E015681E5306DE004DF28B /* Assets.xcassets */; };
 		08E0156C1E5306DE004DF28B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 08E0156A1E5306DE004DF28B /* LaunchScreen.storyboard */; };
 		08E015761E5306F7004DF28B /* UIViewController+Launcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 08E015751E5306F7004DF28B /* UIViewController+Launcher.m */; };
-		08E015831E53108F004DF28B /* UIViewControllerLaunchView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08E0157C1E53108F004DF28B /* UIViewControllerLaunchView.framework */; };
-		08E015841E53108F004DF28B /* UIViewControllerLaunchView.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 08E0157C1E53108F004DF28B /* UIViewControllerLaunchView.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		08E015891E5310A0004DF28B /* UIViewController+Launcher.h in Headers */ = {isa = PBXBuildFile; fileRef = 08E015741E5306F7004DF28B /* UIViewController+Launcher.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		08E0158A1E5310A3004DF28B /* UIViewController+Launcher.m in Sources */ = {isa = PBXBuildFile; fileRef = 08E015751E5306F7004DF28B /* UIViewController+Launcher.m */; };
 /* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		08E015811E53108F004DF28B /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 08E015511E5306DE004DF28B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 08E0157B1E53108F004DF28B;
-			remoteInfo = UIViewControllerLaunchView;
-		};
-/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		08E015881E53108F004DF28B /* Embed Frameworks */ = {
@@ -37,7 +25,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				08E015841E53108F004DF28B /* UIViewControllerLaunchView.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -66,7 +53,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				08E015831E53108F004DF28B /* UIViewControllerLaunchView.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -167,7 +153,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				08E015821E53108F004DF28B /* PBXTargetDependency */,
 			);
 			name = UIViewControllerLaunchViewDemo;
 			productName = UIViewControllerLaunchViewDemo;
@@ -271,14 +256,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		08E015821E53108F004DF28B /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 08E0157B1E53108F004DF28B /* UIViewControllerLaunchView */;
-			targetProxy = 08E015811E53108F004DF28B /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		08E015651E5306DE004DF28B /* Main.storyboard */ = {
@@ -480,6 +457,7 @@
 				08E015861E53108F004DF28B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};

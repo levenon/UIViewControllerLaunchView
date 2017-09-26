@@ -17,16 +17,25 @@
 
 @implementation ViewController
 
-- (instancetype)init{
-    if (self = [super init]) {
-        self.launcher_delegate = self;
-    }
-    return self;
+- (void)awakeFromNib{
+    [super awakeFromNib];
+    
+    self.launcher_delegate = self;
+}
+
+- (void)viewDidLoad{
+    [super viewDidLoad];
 }
 
 - (NSArray<UIView *> *)guidViews{
     if (!_guidViews) {
-        _guidViews = @[[UIView new]];
+        UIView *view1 = [UIView new];
+        view1.backgroundColor = [UIColor redColor];
+        
+        UIView *view2 = [UIView new];
+        view2.backgroundColor = [UIColor blueColor];
+        
+        _guidViews = @[view1, view2];
     }
     return _guidViews;
 }
@@ -42,7 +51,7 @@
 }
 
 - (UIView *)containerViewForLauncherInViewController:(UIViewController *)viewController {
-    return [[[UIApplication sharedApplication] delegate] window];
+    return [self view];
 }
 
 - (BOOL)shouldLoadAgainBeforeLauncherFinishedInViewController:(UIViewController *)viewController;{
@@ -50,7 +59,7 @@
 }
 
 - (BOOL)shouldAllowTapLaunchViewInViewController:(UIViewController *)viewController{
-    return NO;
+    return YES;
 }
 
 - (BOOL)shouldLoadLauncherAfterViewDidLoadInViewController:(UIViewController *)viewController{

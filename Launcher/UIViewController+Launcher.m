@@ -10,18 +10,15 @@
 #import <Foundation/Foundation.h>
 #import "UIViewController+Launcher.h"
 
-NSString * const YRLauncherArchiveStorageName = @"YRLauncherArchiveStorageName";
-
-static inline void launcher_swizzleSelector(Class theClass, SEL originalSelector, SEL swizzledSelector) {
-    Method originalMethod = class_getInstanceMethod(theClass, originalSelector);
-    Method swizzledMethod = class_getInstanceMethod(theClass, swizzledSelector);
-    method_exchangeImplementations(originalMethod, swizzledMethod);
+UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL origSel, SEL altSel){
+    Method origMethod = class_getInstanceMethod(class, origSel);
+    Method altMethod = class_getInstanceMethod(class, altSel);
+    
+    class_addMethod(class, origSel, class_getMethodImplementation(class, origSel), method_getTypeEncoding(origMethod));
+    class_addMethod(class, altSel, class_getMethodImplementation(class, altSel), method_getTypeEncoding(altMethod));
+    
+    method_exchangeImplementations(class_getInstanceMethod(class, origSel), class_getInstanceMethod(class, altSel));
 }
-
-static inline BOOL launcher_addMethod(Class theClass, SEL selector, Method method) {
-    return class_addMethod(theClass, selector,  method_getImplementation(method),  method_getTypeEncoding(method));
-}
-
 
 @interface UIViewController (Launcher_Private)
 
@@ -34,13 +31,10 @@ static inline BOOL launcher_addMethod(Class theClass, SEL selector, Method metho
 @implementation UIViewController (Launcher)
 
 + (void)load{
-    [super load];
-    
-    Method swizzle_viewDidLoadMethod = class_getInstanceMethod(self, @selector(swizzle_viewDidLoad));
-    
-    if (launcher_addMethod(self, @selector(swizzle_viewDidLoad), swizzle_viewDidLoadMethod)) {
-        launcher_swizzleSelector(self, @selector(viewDidLoad), @selector(swizzle_viewDidLoad));
-    }
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        UIViewControllerLauncherMethodSwizzle(self, @selector(viewDidLoad), @selector(swizzle_viewDidLoad));
+    });
 }
 
 - (void)swizzle_viewDidLoad{
@@ -115,14 +109,14 @@ static inline BOOL launcher_addMethod(Class theClass, SEL selector, Method metho
             offset = [[self launcher_delegate] viewController:self offsetOfCustomViewAtIndex:[self launcher_currentIndex]];
         }
         [[self launcher_contentView] addSubview:customView];
-        CGSize screenBounds = [[UIScreen mainScreen] bounds].size;
+        CGSize size = [[self launcher_contentView] bounds].size;
         if (![[self launcher_customView] translatesAutoresizingMaskIntoConstraints]) {
-            customView.frame = CGRectMake(customView.frame.origin.x, customView.frame.origin.y, screenBounds.width, screenBounds.height);
+            customView.frame = CGRectMake(customView.frame.origin.x, customView.frame.origin.y, size.width, size.height);
         } else {
             NSMutableArray *constraints = [NSMutableArray array];
-            NSLayoutConstraint *constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:nil attribute:0 multiplier:1.0 constant:screenBounds.width];
+            NSLayoutConstraint *constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:nil attribute:0 multiplier:1.0 constant:size.width];
             [constraints addObject:constraint];
-            constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:nil attribute:0 multiplier:1.0 constant:screenBounds.height];
+            constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:nil attribute:0 multiplier:1.0 constant:size.height];
             [constraints addObject:constraint];
             constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:self.launcher_contentView attribute:NSLayoutAttributeCenterX multiplier:1.0 constant:offset.x];
             [constraints addObject:constraint];
