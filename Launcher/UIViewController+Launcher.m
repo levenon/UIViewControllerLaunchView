@@ -206,10 +206,6 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
 
 #pragma mark - public
 
-- (void)laucherlauncher_dismissAnimated:(BOOL)animated completion:(void (^)())completion{
-    [self launcher_dismissAnimated:animated completion:completion];
-}
-
 - (void)launcher_reload {
     
     if ([[self launcher_delegate] respondsToSelector:@selector(shouldLoadAgainBeforeLauncherFinishedInViewController:)] &&
