@@ -23,13 +23,10 @@
     self.launcher_delegate = self;
 }
 
-- (void)viewDidLoad{
-    [super viewDidLoad];
-}
-
 - (NSArray<UIView *> *)guidViews{
     if (!_guidViews) {
         UIView *view1 = [UIView new];
+        view1.translatesAutoresizingMaskIntoConstraints = NO;
         view1.backgroundColor = [UIColor redColor];
         
         UIView *view2 = [UIView new];
@@ -53,6 +50,14 @@
 - (UIView *)containerViewForLauncherInViewController:(UIViewController *)viewController {
     return [self view];
 }
+
+//- (CAAnimation *)viewControler:(UIViewController *)viewController animationForMovingInView:(UIView *)view;{
+//    
+//}
+//
+//- (CAAnimation *)viewControler:(UIViewController *)viewController animationForMovingOutView:(UIView *)view;{
+//    
+//}
 
 - (BOOL)shouldLoadAgainBeforeLauncherFinishedInViewController:(UIViewController *)viewController;{
     return YES;

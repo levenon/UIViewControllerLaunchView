@@ -33,18 +33,25 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
 + (void)load{
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        UIViewControllerLauncherMethodSwizzle(self, @selector(viewDidLoad), @selector(swizzle_viewDidLoad));
+        UIViewControllerLauncherMethodSwizzle(self, @selector(viewDidLoad), @selector(launcher_swizzle_viewDidLoad));
+        UIViewControllerLauncherMethodSwizzle(self, @selector(viewWillLayoutSubviews), @selector(launcher_swizzle_viewWillLayoutSubviews));
     });
 }
 
-- (void)swizzle_viewDidLoad{
-    [self swizzle_viewDidLoad];
+- (void)launcher_swizzle_viewDidLoad{
+    [self launcher_swizzle_viewDidLoad];
     
     if ([self launcher_delegate] &&
         [[self launcher_delegate] respondsToSelector:@selector(shouldLoadLauncherAfterViewDidLoadInViewController:)] &&
         [[self launcher_delegate] shouldLoadLauncherAfterViewDidLoadInViewController:self]) {
         [self launcher_reload];
     }
+}
+
+- (void)launcher_swizzle_viewWillLayoutSubviews{
+    [self launcher_swizzle_viewWillLayoutSubviews];
+    
+    [self _launcher_updateContentSize];
 }
 
 #pragma mark - accessor
@@ -80,25 +87,30 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
     objc_setAssociatedObject(self, @selector(launcher_customView), launcher_customView, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 }
 
-#pragma mark - private
-
-- (UIView *)_loadContentView{
-    
-    UIView *contentView = [UIView new];
-    UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(didTapLauncherContentView:)];
-    [contentView addGestureRecognizer:tapGestureRecognizer];
-    
+- (UIView *)launcher_containerView{
     UIView *containerView = [self view];
     if ([[self launcher_delegate] respondsToSelector:@selector(containerViewForLauncherInViewController:)]) {
-       containerView = [[self launcher_delegate] containerViewForLauncherInViewController:self];
+        containerView = [[self launcher_delegate] containerViewForLauncherInViewController:self];
     }
+    return containerView;
+}
+
+#pragma mark - private
+
+- (UIView *)_launcher_loadContentView{
+    
+    UIView *contentView = [UIView new];
+    UITapGestureRecognizer *tapGestureRecognizer = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(launcher_didTapLauncherContentView:)];
+    [contentView addGestureRecognizer:tapGestureRecognizer];
+    
+    UIView *containerView = [self launcher_containerView];
     contentView.frame = [containerView bounds];
     [containerView addSubview:contentView];
     
     return contentView;
 }
 
-- (UIView *)_loadCustomViewAniamted:(BOOL)animated atIndex:(NSUInteger)index{
+- (UIView *)_launcher_loadCustomViewAniamted:(BOOL)animated atIndex:(NSUInteger)index{
     UIView *customView = nil;
     if ([[self launcher_delegate] respondsToSelector:@selector(viewController:customViewAtIndex:)]) {
         customView = [[self launcher_delegate] viewController:self customViewAtIndex:index];
@@ -108,75 +120,78 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
         if ([[self launcher_delegate] respondsToSelector:@selector(viewController:offsetOfCustomViewAtIndex:)]) {
             offset = [[self launcher_delegate] viewController:self offsetOfCustomViewAtIndex:[self launcher_currentIndex]];
         }
-        [[self launcher_contentView] addSubview:customView];
-        CGSize size = [[self launcher_contentView] bounds].size;
-        if (![[self launcher_customView] translatesAutoresizingMaskIntoConstraints]) {
-            customView.frame = CGRectMake(customView.frame.origin.x, customView.frame.origin.y, size.width, size.height);
+        UIView *contentView = [self launcher_contentView];
+        CGSize size = [contentView bounds].size;
+        
+        [contentView addSubview:customView];
+        if ([customView translatesAutoresizingMaskIntoConstraints]) {
+            customView.frame = CGRectMake(offset.x, offset.y, size.width - offset.x, size.height - offset.y);
         } else {
-            NSMutableArray *constraints = [NSMutableArray array];
-            NSLayoutConstraint *constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:nil attribute:0 multiplier:1.0 constant:size.width];
-            [constraints addObject:constraint];
-            constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:nil attribute:0 multiplier:1.0 constant:size.height];
-            [constraints addObject:constraint];
-            constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:self.launcher_contentView attribute:NSLayoutAttributeCenterX multiplier:1.0 constant:offset.x];
-            [constraints addObject:constraint];
-            constraint = [NSLayoutConstraint constraintWithItem:customView attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self.launcher_contentView attribute:NSLayoutAttributeCenterY multiplier:1.0 constant:offset.y];
-            [constraints addObject:constraint];
-            
-            [customView addConstraints:constraints];
+            [contentView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:[NSString stringWithFormat:@"H:|-%f-[customView]|", offset.x] options:0 metrics:nil views:NSDictionaryOfVariableBindings(customView)]];
+            [contentView addConstraints:[NSLayoutConstraint constraintsWithVisualFormat:[NSString stringWithFormat:@"V:|-%f-[customView]|", offset.y] options:0 metrics:nil views:NSDictionaryOfVariableBindings(customView)]];
         };
     }
     return customView;
 }
-- (void)_dismissAnimated:(BOOL)animated completion:(void (^)())completion{
-    if (animated) {
-        [UIView animateWithDuration:0.25 animations:^{
-            self.launcher_contentView.alpha = 0;
-        } completion:^(BOOL finished) {
-            [self.launcher_contentView removeFromSuperview];
-            self.launcher_contentView = nil;
-            if (completion) {
-                completion();
-            }
-        }];
-    } else {
-        [self.launcher_contentView removeFromSuperview];
+- (void)_launcher_dismissAnimated:(BOOL)animated completion:(void (^)())completion{
+    void (^animationCompletion)() = ^{
+        [[self launcher_contentView] removeFromSuperview];
         self.launcher_contentView = nil;
         if (completion) {
             completion();
         }
+    };
+    if (animated) {
+        [UIView animateWithDuration:0.25 animations:^{
+            self.launcher_contentView.alpha = 0;
+        } completion:^(BOOL finished) {
+            animationCompletion();
+        }];
+    } else {
+        animationCompletion();
     }
-    if (self.launcher_delegate && [self.launcher_delegate respondsToSelector:@selector(launchViewDidDismissInViewController:)]) {
-        [self.launcher_delegate launchViewDidDismissInViewController:self];
+    if ([self launcher_delegate] && [[self launcher_delegate] respondsToSelector:@selector(launchViewDidDismissInViewController:)]) {
+        [[self launcher_delegate] launchViewDidDismissInViewController:self];
     }
 }
 
-- (void)_exchangCustomView:(UIView *)customView originCustomView:(UIView *)originCustomView completion:(void (^)())completion{
-    CAAnimation *moveInAnimation;
-    CAAnimation *moveOutAnimation;
-    if ([[self launcher_delegate] respondsToSelector:@selector(animationForMovingInLauncherInViewControler:)]) {
-        moveInAnimation = [[self launcher_delegate] animationForMovingInLauncherInViewControler:self];
+- (void)_launcher_exchangCustomView:(UIView *)customView originCustomView:(UIView *)originCustomView{
+    CAAnimation *moveInAnimation = nil;
+    CAAnimation *moveOutAnimation = nil;
+    if (customView && [[self launcher_delegate] respondsToSelector:@selector(viewControler:animationForMovingInView:)]) {
+        moveInAnimation = [[self launcher_delegate] viewControler:self animationForMovingInView:customView];
     }
-    if ([[self launcher_delegate] respondsToSelector:@selector(animationForMovingOutLauncherInViewControler:)]) {
-        moveOutAnimation = [[self launcher_delegate] animationForMovingOutLauncherInViewControler:self];
+    if (originCustomView && [[self launcher_delegate] respondsToSelector:@selector(viewControler:animationForMovingOutView:)]) {
+        moveOutAnimation = [[self launcher_delegate] viewControler:self animationForMovingOutView:originCustomView];
     }
-    if (moveInAnimation || moveOutAnimation) {
-        [customView.layer addAnimation:moveInAnimation forKey:nil];
-        [originCustomView.layer addAnimation:moveOutAnimation forKey:nil];
+    
+    if (!moveInAnimation) moveInAnimation = [self _launcher_defaultAnimation:YES];
+    if (!moveOutAnimation) moveOutAnimation = [self _launcher_defaultAnimation:NO];
+    
+    if (customView) {
+        [[customView layer] addAnimation:moveInAnimation forKey:nil];
+    }
+    if (originCustomView) {
+        [[originCustomView layer] addAnimation:moveOutAnimation forKey:nil];
         [originCustomView performSelector:@selector(removeFromSuperview) withObject:nil afterDelay:[moveOutAnimation duration]];
-    } else {
-        [UIView animateWithDuration:0.25 animations:^{
-            customView.alpha = 1;
-            originCustomView.alpha = 0;
-        } completion:^(BOOL finished) {
-            [originCustomView removeFromSuperview];
-        }];
     }
+}
+
+- (void)_launcher_updateContentSize{
+    self.launcher_contentView.frame = [[self launcher_containerView] bounds];
+}
+
+- (CAAnimation *)_launcher_defaultAnimation:(BOOL)movingIn{
+    CABasicAnimation *animation =[CABasicAnimation animationWithKeyPath:@"opacity"];
+    animation.fromValue = @(!movingIn);
+    animation.toValue = @(movingIn);
+    animation.duration = .25f;
+    return animation;
 }
 
 #pragma mark - actions
 
-- (void)didTapLauncherContentView:(UITapGestureRecognizer *)tapGestureRecognizer {
+- (void)launcher_didTapLauncherContentView:(UITapGestureRecognizer *)tapGestureRecognizer {
     BOOL shouldTapLaucherContentView = YES;
     if ([[self launcher_delegate] respondsToSelector:@selector(shouldAllowTapLaunchViewInViewController:)]) {
         shouldTapLaucherContentView = [[self launcher_delegate] shouldAllowTapLaunchViewInViewController:self];
@@ -191,8 +206,8 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
 
 #pragma mark - public
 
-- (void)laucher_dismissAnimated:(BOOL)animated completion:(void (^)())completion{
-    [self _dismissAnimated:animated completion:completion];
+- (void)laucherlauncher_dismissAnimated:(BOOL)animated completion:(void (^)())completion{
+    [self launcher_dismissAnimated:animated completion:completion];
 }
 
 - (void)launcher_reload {
@@ -218,11 +233,11 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
         return;
     }
     if (![self launcher_contentView]) {
-        self.launcher_contentView = [self _loadContentView];
+        self.launcher_contentView = [self _launcher_loadContentView];
     }
     
     if (![self launcher_customView]) {
-        self.launcher_customView = [self _loadCustomViewAniamted:YES atIndex:[self launcher_currentIndex]];
+        self.launcher_customView = [self _launcher_loadCustomViewAniamted:YES atIndex:[self launcher_currentIndex]];
     }
 }
 
@@ -230,9 +245,10 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
     if ([self launcher_currentIndex] - 1 < 0) {
         return;
     }
-    UIView *customView = [self _loadCustomViewAniamted:YES atIndex:[self launcher_currentIndex] - 1];
+    UIView *customView = [self _launcher_loadCustomViewAniamted:YES atIndex:[self launcher_currentIndex] - 1];
     if (customView) {
-        [self _exchangCustomView:customView originCustomView:[self launcher_customView] completion:nil];
+        [self _launcher_exchangCustomView:customView originCustomView:[self launcher_customView]];
+        
         self.launcher_customView = customView;
         self.launcher_currentIndex--;
     }
@@ -240,9 +256,10 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
 
 - (void)launcher_next {
     if (self.launcher_currentIndex < [[self launcher_delegate] numberOfItemsForLauncherInViewController:self] - 1) {
-        UIView *customView = [self _loadCustomViewAniamted:YES atIndex:[self launcher_currentIndex] + 1];
+        UIView *customView = [self _launcher_loadCustomViewAniamted:YES atIndex:[self launcher_currentIndex] + 1];
         if (customView) {
-            [self _exchangCustomView:customView originCustomView:[self launcher_customView] completion:nil];
+            [self _launcher_exchangCustomView:customView originCustomView:[self launcher_customView]];
+            
             self.launcher_customView = customView;
             self.launcher_currentIndex++;
         }
@@ -252,13 +269,13 @@ UIKIT_STATIC_INLINE void UIViewControllerLauncherMethodSwizzle(Class class, SEL 
 }
 
 - (void)launcher_done {
-    [self _dismissAnimated:YES completion:^{
+    [self launcher_dismissAnimated:YES completion:^{
         self.launcher_currentIndex = 0;
     }];
 }
 
 - (void)launcher_dismissAnimated:(BOOL)animated completion:(void (^)())completion {
-    [self _dismissAnimated:animated completion:^{
+    [self _launcher_dismissAnimated:animated completion:^{
         self.launcher_currentIndex = 0;
         if (completion) {
             completion();

@@ -20,9 +20,9 @@
 
 - (CGPoint)viewController:(UIViewController *)viewController offsetOfCustomViewAtIndex:(NSInteger)index;
 
-- (CAAnimation *)animationForMovingInLauncherInViewControler:(UIViewController *)viewController;
+- (CAAnimation *)viewControler:(UIViewController *)viewController animationForMovingInView:(UIView *)view;
 
-- (CAAnimation *)animationForMovingOutLauncherInViewControler:(UIViewController *)viewController;
+- (CAAnimation *)viewControler:(UIViewController *)viewController animationForMovingOutView:(UIView *)view;
 
 - (BOOL)shouldLoadLauncherAfterViewDidLoadInViewController:(UIViewController *)viewController;
 
